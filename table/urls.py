@@ -1,8 +1,6 @@
-# from django.urls import path
 from rest_framework import routers
-from .views import TabletopViewSet, subscribe
+from .views import TabletopViewSet, subscribe, UsrViewSet
 
-# Routers provide an easy way of automatically determining the URL conf.
 router = routers.DefaultRouter()
 router.register('', TabletopViewSet)
 urlpatterns = router.urls

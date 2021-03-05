@@ -1,5 +1,3 @@
-# from django.shortcuts import render
-# from django.http import HttpResponse, Http404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -14,6 +12,13 @@ class TabletopViewSet(viewsets.ModelViewSet):
     ]
     serializer_class = TabletopSerializer
 
+class UsrViewSet(viewsets.ModelViewSet):
+    queryset = Usr.objects.all()
+    permission_classes = [
+        permissions.AllowAny
+    ]
+    serializer_class = UsrSerializer
+
 @api_view(['GET', 'PUT'])
 def subscribe(request, pk, format=None):
     try:
@@ -22,27 +27,38 @@ def subscribe(request, pk, format=None):
         return Response(status=status.HTTP_404_NOT_FOUND)
     
     if request.method == 'GET':
-        tmp = UsrSerializer(table.owner)
-        return Response(tmp.data)
+        people = table.players
+        return Response(people)
+    
+    if request.method == 'PUT':
+        newTable = Tabletop.objects.get(pk=pk)
+        users = request.data.get('users')
+        users = [user['id'] for user in users]
+        newTable.players.set(users)
+        serializer = TabletopSerializer(table, data=newTable)
+        if serializer.is_valid() :
+            serializer.save()
+        return Response(serializer.data)
 
-#   @Put(':id/sub')
-#   subscribe(@Param('id') tableId: number, @Body() users: IUsr[]) {
-#     this.tableService.subscribeUsers(tableId, users);
-#     return this.tableService.getSubscribersAndNotsub(tableId);
-#   }
-
-#   @Get(':id/sub')
-#   getSubscribers(@Param('id') tableId: number) {
-#     return this.tableService.getSubscribers(tableId);
-#   }
-
-#   @Put(':id/unsub')
-#   unsubscribe(@Param('id') tableId: number, @Body() users: IUsr[]) {
-#     this.tableService.unSubscribeUsers(tableId, users);
-#     return this.tableService.getSubscribersAndNotsub(tableId);    
-#   }
-
-#   @Get(':id/unsub')
-#   getUnSubscribers(@Param('id') tableId: number) {
-#     return this.tableService.getAllUnSubscribers(tableId);
-#   }
+@api_view(['GET', 'PUT'])
+def unsubscribe(request, pk, format=None):
+    try:
+        table = Tabletop.objects.get(pk=pk)
+    except Tabletop.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        allPeople = set(Usr.objects.all())
+        unsubscribers = allPeople - {*table.players, table.owner}
+        return Response(unsubscribers)
+    
+    if request.method == 'PUT':
+        newTable = Tabletop.objects.get(pk=pk)
+        users = request.data.get('users')
+        users = set(user['id'] for user in users)
+        users = newTable.players - users
+        newTable.players.set(users)
+        serializer = TabletopSerializer(table, data=newTable)
+        if serializer.is_valid() :
+            serializer.save()
+        return Response(serializer.data)
